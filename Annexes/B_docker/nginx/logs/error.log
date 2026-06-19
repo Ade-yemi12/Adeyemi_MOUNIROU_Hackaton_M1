@@ -28,3 +28,7 @@
 2026/06/19 17:58:47 [notice] 1#1: start worker processes
 2026/06/19 17:58:47 [notice] 1#1: start worker process 22
 2026/06/19 17:58:47 [notice] 1#1: start worker process 23
+2026/06/19 19:16:44 [error] 22#22: *159 open() "/usr/share/nginx/html/nmaplowercheck1781896604" failed (2: No such file or directory), client: 192.168.220.129, server: localhost, request: "GET /nmaplowercheck1781896604 HTTP/1.1", host: "192.168.220.129:8080"
+2026/06/19 19:16:44 [error] 22#22: *160 open() "/usr/share/nginx/html/sdk" failed (2: No such file or directory), client: 192.168.220.129, server: localhost, request: "POST /sdk HTTP/1.1", host: "192.168.220.129:8080"
+2026/06/19 19:16:44 [error] 22#22: *162 open() "/usr/share/nginx/html/HNAP1" failed (2: No such file or directory), client: 192.168.220.129, server: localhost, request: "GET /HNAP1 HTTP/1.1", host: "192.168.220.129:8080"
+2026/06/19 19:16:44 [error] 23#23: *163 open() "/usr/share/nginx/html/evox/about" failed (2: No such file or directory), client: 192.168.220.129, server: localhost, request: "GET /evox/about HTTP/1.1", host: "192.168.220.129:8080"

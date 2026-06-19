@@ -1,0 +1,351 @@
+################################################################################
+# JOURNAL DES COMMANDES - Mini SOC M1Tech Solutions
+# Hackathon M1 Infrastructures Réseaux & Cybersécurité
+################################################################################
+#
+# NOTE IMPORTANTE : ce projet a été réalisé sur DEUX machines virtuelles
+# successives, suite à un incident de saturation disque détaillé en section 5
+# du présent fichier. Les adresses IP changent donc à partir de cette section :
+#   - VM initiale  : 192.168.253.144 (NAT) / 192.168.220.128 (host-only)
+#   - VM recréée   : 192.168.253.145 (NAT) / 192.168.220.129 (host-only)
+#
+################################################################################
+
+
+# ==============================================================================
+# 1. INSTALLATION ET CONFIGURATION INITIALE DE LA VM
+# ==============================================================================
+
+# Mise à jour du système après installation d'Ubuntu Server
+sudo apt update
+sudo apt upgrade -y
+
+# Vérification des interfaces réseau (NAT + host-only)
+ip a
+
+# Connexion SSH initiale depuis le PC hôte (port par défaut 22, avant sécurisation)
+ssh adeyemi@192.168.220.128
+
+# Vérification de la version du système
+cat /etc/os-release
+
+
+# ==============================================================================
+# 2. SECURISATION SSH
+# ==============================================================================
+
+# Sauvegarde de la configuration SSH avant modification (bonne pratique)
+sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+
+# Edition de la configuration : changement de port (22 -> 2222) et
+# désactivation de la connexion root distante
+sudo nano /etc/ssh/sshd_config
+#   Port 2222
+#   PermitRootLogin no
+
+# Application de la nouvelle configuration
+sudo systemctl restart ssh
+
+# Vérification (effectuée AVANT de fermer la session SSH initiale, par sécurité)
+ssh -p 2222 adeyemi@192.168.220.128
+cat /etc/ssh/sshd_config | grep -E "Port|PermitRootLogin"
+
+
+# ==============================================================================
+# 3. PARE-FEU UFW
+# ==============================================================================
+
+# Etat initial du pare-feu (inactif par défaut sur Ubuntu Server)
+sudo ufw status
+
+# Autorisation du port SSH AVANT activation du pare-feu (sécurité : éviter
+# de se couper l'accès à la VM)
+sudo ufw allow 2222/tcp comment 'SSH admin'
+
+# Autorisation des ports des futurs services applicatifs
+sudo ufw allow 8080/tcp comment 'Nginx web'
+sudo ufw allow 3001/tcp comment 'Uptime Kuma'
+sudo ufw allow 1514/tcp comment 'Wazuh agents'
+sudo ufw allow 1515/tcp comment 'Wazuh enrollment'
+sudo ufw allow 55000/tcp comment 'Wazuh API'
+
+# Activation du pare-feu (confirmation "y" demandée)
+sudo ufw enable
+
+# Vérification de la configuration finale
+sudo ufw status verbose
+
+
+# ==============================================================================
+# 4. INSTALLATION DE DOCKER
+# ==============================================================================
+
+# Mise à jour des paquets et installation des dépendances
+sudo apt update
+sudo apt install -y ca-certificates curl gnupg lsb-release
+
+# Ajout de la clé GPG officielle Docker
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# Ajout du dépôt officiel Docker aux sources Apt
+sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/ubuntu
+Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+Components: stable
+Architectures: $(dpkg --print-architecture)
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+
+# Installation de Docker Engine, CLI, containerd et plugin Compose
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+# Ajout de l'utilisateur courant au groupe docker (éviter sudo à chaque commande)
+sudo usermod -aG docker $USER
+
+# Déconnexion/reconnexion nécessaire pour appliquer le changement de groupe
+exit
+ssh -p 2222 adeyemi@192.168.220.128
+
+# Vérification de l'installation
+docker --version
+docker compose version
+
+# Augmentation de la limite mmap système, requise par Wazuh/OpenSearch
+# (sans cette étape, le conteneur wazuh-manager échoue au démarrage)
+sudo sysctl -w vm.max_map_count=262144
+echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf
+
+
+# ==============================================================================
+# 5. INCIDENT : SATURATION DISQUE (LVM) ET RECREATION DE LA VM
+# ==============================================================================
+#
+# Pendant la création du fichier docker-compose.yml, l'erreur suivante est
+# apparue : "No space left on device". Diagnostic et tentative de résolution :
+
+# Diagnostic de l'espace disque
+df -h
+docker system df
+
+# Tentative 1 : nettoyage des images/cache Docker inutilisés (n'a rien libéré,
+# car les 4 conteneurs étaient déjà actifs et utilisaient toutes leurs images)
+docker system prune -a -f
+
+# Tentative 2 : extension du volume logique LVM vers l'espace libre du VG
+sudo vgs
+sudo lvs
+sudo lvextend -l +100%FREE /dev/mapper/ubuntu--vg-ubuntu--lv
+# -> ECHEC : "mkdir failed: No space left on device"
+#    (le disque était à 100%, empêchant même la création du petit
+#    répertoire de métadonnées /etc/lvm/archive nécessaire à l'opération)
+
+# Tentative 3 : libération d'espace via les caches système
+sudo apt clean
+sudo journalctl --vacuum-size=10M
+df -h
+# -> Espace libéré insuffisant pour résoudre le blocage LVM
+
+# DECISION : recréation d'une seconde VM avec un disque correctement
+# dimensionné (49 Go, partitionné sans LVM), après sauvegarde complète
+# du travail réalisé sur le dépôt Git distant :
+cd ~/Adeyemi_MOUNIROU_Hackaton_M1
+git add .
+git commit -m "Sauvegarde avant recreation VM (probleme disque LVM)"
+git push
+
+# Sur la nouvelle VM : vérification du disque avant de poursuivre
+df -h
+# -> Confirmation : 49G disponibles, 37% utilisé, sda2 sans LVM
+
+# Reconnexion SSH sur la nouvelle VM (nouvelle IP host-only : .129)
+ssh adeyemi@192.168.220.129
+
+# Récupération du projet déjà versionné sur GitHub (clé SSH GitHub à
+# régénérer car nouvelle machine, voir section 6)
+git clone git@github.com:Ade-yemi12/Adeyemi_MOUNIROU_Hackaton_M1.git
+cd Adeyemi_MOUNIROU_Hackaton_M1
+
+
+# ==============================================================================
+# 6. CONFIGURATION GIT / GITHUB (clé SSH)
+# ==============================================================================
+
+# Génération d'une nouvelle clé SSH dédiée à cette VM
+ssh-keygen -t ed25519 -C "adeyemi-hackathon-m1"
+cat ~/.ssh/id_ed25519.pub
+# -> clé publique ajoutée manuellement sur https://github.com/settings/keys
+
+# Vérification de l'authentification SSH vers GitHub
+ssh -T git@github.com
+
+# Correction du remote Git (était resté en HTTPS après le premier clone,
+# ce qui provoquait l'erreur "Password authentication is not supported")
+git remote -v
+git remote set-url origin git@github.com:Ade-yemi12/Adeyemi_MOUNIROU_Hackaton_M1.git
+git remote -v
+git push -u origin main
+
+
+# ==============================================================================
+# 7. DEPLOIEMENT DE LA STACK DOCKER (4 conteneurs)
+# ==============================================================================
+
+cd ~/Adeyemi_MOUNIROU_Hackaton_M1/Annexes/B_docker
+
+# Création du fichier docker-compose.yml (Nginx, MariaDB, Uptime Kuma, Wazuh)
+nano docker-compose.yml
+
+# Création du fichier .env (mots de passe réels, non versionné via .gitignore)
+cp .env.example .env
+nano .env
+
+# Création de la page d'accueil Nginx et des dossiers de volumes
+mkdir -p nginx/html nginx/logs
+
+# Lancement de la stack complète
+docker compose up -d
+
+# Vérification : les 4 conteneurs doivent être "Up"
+docker ps
+
+
+# ==============================================================================
+# 8. SUPERVISION (Uptime Kuma)
+# ==============================================================================
+
+# Configuration réalisée via l'interface web http://<IP>:3001 :
+#   - Création du compte administrateur
+#   - Ajout de la sonde "Site Web M1Tech" (HTTP, port 8080)
+#   - Ajout de la sonde "Wazuh Manager API" (TCP, port 55000)
+
+# Démonstration de la détection de panne : arrêt volontaire de Nginx
+docker stop m1tech-web
+# -> Sonde "Site Web M1Tech" passée en "Hors ligne" dans Uptime Kuma
+
+# Redémarrage du service (retour à la normale)
+docker start m1tech-web
+
+
+# ==============================================================================
+# 9. AGENT WAZUH SUR LA VM
+# ==============================================================================
+
+# Installation des dépendances et de l'agent Wazuh
+sudo apt-get install -y gnupg apt-transport-https
+curl -so wazuh-agent.deb https://packages.wazuh.com/4.x/apt/pool/main/w/wazuh-agent/wazuh-agent_4.9.0-1_amd64.deb
+sudo WAZUH_MANAGER='127.0.0.1' dpkg -i ./wazuh-agent.deb
+
+# Démarrage et activation au boot
+sudo systemctl daemon-reload
+sudo systemctl enable wazuh-agent
+sudo systemctl start wazuh-agent
+sudo systemctl status wazuh-agent
+
+# Vérification que l'agent est bien reconnu par le manager (conteneur Docker)
+docker exec -it m1tech-wazuh-manager /var/ossec/bin/agent_control -l
+
+
+# ==============================================================================
+# 10. INCIDENT : L'AGENT WAZUH NE TRANSMETTAIT PAS LES LOGS SSH (auth.log)
+# ==============================================================================
+#
+# Après une première série de tentatives de connexion SSH ratées (volontaires,
+# pour tester la détection), aucune alerte correspondante n'apparaissait dans
+# /var/ossec/logs/alerts/alerts.log côté manager, malgré la présence
+# confirmée des échecs dans /var/log/auth.log sur la VM.
+#
+# DIAGNOSTIC : la configuration par défaut de l'agent (/var/ossec/etc/ossec.conf)
+# ne contenait aucun bloc <localfile> pointant vers /var/log/auth.log -- seuls
+# quelques fichiers (active-responses.log, dpkg.log, etc.) étaient surveillés.
+# L'agent ne pouvait donc pas transmettre un fichier qu'il ne lisait pas.
+
+# Vérification de l'absence du bloc auth.log dans la configuration
+sudo cat /var/ossec/etc/ossec.conf | grep -A 2 "auth.log"
+# -> aucun résultat : confirmation du diagnostic
+
+# Localisation des balises de fermeture du fichier de configuration
+grep -n "</ossec_config>" /var/ossec/etc/ossec.conf
+# -> deux occurrences (lignes 179 et 197) : le fichier contient deux blocs
+#    <ossec_config> distincts (config générale + section localfile)
+
+# RESOLUTION : sauvegarde de précaution puis ajout du bloc <localfile>
+# manquant pour /var/log/auth.log, juste avant la balise </ossec_config>
+# de la section "Log analysis" (ligne 197)
+sudo cp /var/ossec/etc/ossec.conf /var/ossec/etc/ossec.conf.bak2
+
+sudo sed -i '196a\
+  <localfile>\
+    <log_format>syslog</log_format>\
+    <location>/var/log/auth.log</location>\
+  </localfile>' /var/ossec/etc/ossec.conf
+
+# Vérification de l'insertion
+sudo sed -n '185,200p' /var/ossec/etc/ossec.conf
+
+# Redémarrage de l'agent pour appliquer la nouvelle configuration
+sudo systemctl restart wazuh-agent
+sudo systemctl status wazuh-agent
+
+# Nouveau test : la détection fonctionne désormais correctement (voir
+# section 11 ci-dessous, Evénement n°1)
+
+
+# ==============================================================================
+# 11. GENERATION ET VERIFICATION DES EVENEMENTS DE SECURITE
+# ==============================================================================
+
+# --- Evénement n°1 : tentatives de connexion SSH invalides (bruteforce) ---
+# Exécuté depuis le PC hôte, plusieurs fois, avec différents utilisateurs
+# inexistants (root, test, user, john, fawaz) :
+#   ssh -p 2222 <utilisateur_bidon>@192.168.220.129
+
+sudo tail -20 /var/log/auth.log
+sudo grep -i "sshd\|Failed password\|Invalid user" /var/log/auth.log
+docker exec -it m1tech-wazuh-manager tail -50 /var/ossec/logs/alerts/alerts.log
+docker exec -it m1tech-wazuh-manager grep -i "Failed password\|Invalid user" /var/ossec/logs/alerts/alerts.log
+# -> Rule 5710 (level 5) "Attempt to login using a non-existent user"
+# -> Rule 5712 (level 10) "brute force trying to get access to the system"
+
+# --- Evénement n°2 : scan de ports Nmap ---
+# Exécuté depuis le PC hôte :
+nmap -sV 192.168.220.129
+
+# Vérification de la trace dans les logs Nginx (User-Agent Nmap explicite)
+sudo tail -30 ~/Adeyemi_MOUNIROU_Hackaton_M1/Annexes/B_docker/nginx/logs/access.log
+
+# --- Evénement n°3 : création d'un utilisateur suspect ---
+sudo useradd -m -s /bin/bash utilisateur_suspect
+sudo tail -10 /var/log/auth.log
+docker exec -it m1tech-wazuh-manager grep -i "useradd\|new user" /var/ossec/logs/alerts/alerts.log
+# -> Rule 5902 (level 8) "New user added to the system"
+
+
+# ==============================================================================
+# 12. SAUVEGARDE DES PREUVES DANS LES ANNEXES ET VERSIONNEMENT GIT
+# ==============================================================================
+
+cd ~/Adeyemi_MOUNIROU_Hackaton_M1
+
+# Copie de la configuration agent modifiée (preuve de la résolution de
+# l'incident décrit en section 10)
+cp /var/ossec/etc/ossec.conf Annexes/C_scripts/ossec_agent_config_auth-log.conf
+sudo chown adeyemi:adeyemi Annexes/C_scripts/ossec_agent_config_auth-log.conf
+
+# Extraits de logs pertinents (et non les fichiers bruts complets)
+sudo grep -i "Failed password\|Invalid user\|brute force" /var/log/auth.log > Annexes/E_journaux/auth_extrait_bruteforce.log
+sudo grep -A 2 "utilisateur_suspect" /var/log/auth.log > Annexes/E_journaux/auth_extrait_useradd.log
+sudo cp Annexes/B_docker/nginx/logs/access.log Annexes/E_journaux/nginx_logs/access_extrait_scan-nmap.log
+sudo chown adeyemi:adeyemi Annexes/E_journaux/auth_extrait_useradd.log Annexes/E_journaux/nginx_logs/access_extrait_scan-nmap.log
+
+# Commit et push final
+git add .
+git commit -m "Documentation complete : incidents, evenements de securite et preuves"
+git push
+
+################################################################################
+# FIN DU JOURNAL DES COMMANDES
+################################################################################

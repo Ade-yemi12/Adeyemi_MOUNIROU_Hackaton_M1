@@ -1,0 +1,9 @@
+Jun 19 19:24:07 soc-server sudo:  adeyemi : TTY=pts/0 ; PWD=/home/adeyemi ; USER=root ; COMMAND=/usr/sbin/useradd -m -s /bin/bash utilisateur_suspect
+Jun 19 19:24:07 soc-server sudo: pam_unix(sudo:session): session opened for user root(uid=0) by adeyemi(uid=1000)
+Jun 19 19:24:07 soc-server useradd[33290]: new group: name=utilisateur_suspect, GID=1001
+Jun 19 19:24:07 soc-server useradd[33290]: new user: name=utilisateur_suspect, UID=1001, GID=1001, home=/home/utilisateur_suspect, shell=/bin/bash, from=/dev/pts/1
+Jun 19 19:24:07 soc-server sudo: pam_unix(sudo:session): session closed for user root
+Jun 19 19:24:15 soc-server sudo:  adeyemi : TTY=pts/0 ; PWD=/home/adeyemi ; USER=root ; COMMAND=/usr/bin/tail -10 /var/log/auth.log
+--
+Jun 19 19:26:46 soc-server sudo:  adeyemi : TTY=pts/0 ; PWD=/home/adeyemi/Adeyemi_MOUNIROU_Hackaton_M1 ; USER=root ; COMMAND=/usr/bin/grep -A 2 utilisateur_suspect /var/log/auth.log
+Jun 19 19:26:46 soc-server sudo: pam_unix(sudo:session): session opened for user root(uid=0) by adeyemi(uid=1000)

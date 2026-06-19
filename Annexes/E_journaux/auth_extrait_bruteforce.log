@@ -1,0 +1,33 @@
+Jun 19 18:34:55 soc-server sshd[29132]: Failed password for root from 192.168.220.1 port 4373 ssh2
+Jun 19 18:35:02 soc-server sshd[29132]: Failed password for root from 192.168.220.1 port 4373 ssh2
+Jun 19 18:35:06 soc-server sshd[29132]: Failed password for root from 192.168.220.1 port 4373 ssh2
+Jun 19 18:35:13 soc-server sshd[29160]: Invalid user test from 192.168.220.1 port 4374
+Jun 19 18:35:15 soc-server sshd[29160]: Failed none for invalid user test from 192.168.220.1 port 4374 ssh2
+Jun 19 18:35:16 soc-server sshd[29160]: Failed password for invalid user test from 192.168.220.1 port 4374 ssh2
+Jun 19 18:35:16 soc-server sshd[29160]: Failed password for invalid user test from 192.168.220.1 port 4374 ssh2
+Jun 19 18:35:16 soc-server sshd[29160]: Connection reset by invalid user test 192.168.220.1 port 4374 [preauth]
+Jun 19 18:35:47 soc-server sshd[29164]: Invalid user user from 192.168.220.1 port 4376
+Jun 19 18:35:51 soc-server sshd[29164]: Failed password for invalid user user from 192.168.220.1 port 4376 ssh2
+Jun 19 18:35:56 soc-server sshd[29164]: Failed password for invalid user user from 192.168.220.1 port 4376 ssh2
+Jun 19 18:36:03 soc-server sshd[29164]: Failed password for invalid user user from 192.168.220.1 port 4376 ssh2
+Jun 19 18:36:05 soc-server sshd[29164]: Connection reset by invalid user user 192.168.220.1 port 4376 [preauth]
+Jun 19 18:36:14 soc-server sshd[29202]: Invalid user john from 192.168.220.1 port 30731
+Jun 19 18:36:19 soc-server sshd[29202]: Failed password for invalid user john from 192.168.220.1 port 30731 ssh2
+Jun 19 18:36:23 soc-server sshd[29202]: Failed password for invalid user john from 192.168.220.1 port 30731 ssh2
+Jun 19 18:36:28 soc-server sshd[29202]: Failed password for invalid user john from 192.168.220.1 port 30731 ssh2
+Jun 19 18:36:29 soc-server sshd[29202]: Connection reset by invalid user john 192.168.220.1 port 30731 [preauth]
+Jun 19 18:36:42 soc-server sshd[29204]: Invalid user fawaz from 192.168.220.1 port 30732
+Jun 19 18:36:46 soc-server sshd[29204]: Failed password for invalid user fawaz from 192.168.220.1 port 30732 ssh2
+Jun 19 18:36:50 soc-server sshd[29204]: Failed password for invalid user fawaz from 192.168.220.1 port 30732 ssh2
+Jun 19 18:36:55 soc-server sshd[29204]: Failed password for invalid user fawaz from 192.168.220.1 port 30732 ssh2
+Jun 19 18:36:56 soc-server sshd[29204]: Connection reset by invalid user fawaz 192.168.220.1 port 30732 [preauth]
+Jun 19 18:49:14 soc-server sudo:  adeyemi : TTY=pts/0 ; PWD=/home/adeyemi ; USER=root ; COMMAND=/usr/bin/grep -i 'sshd\\|Failed password\\|Invalid user' /var/log/auth.log
+Jun 19 18:59:31 soc-server sshd[32216]: Failed password for root from 192.168.220.1 port 3026 ssh2
+Jun 19 18:59:37 soc-server sshd[32216]: Failed password for root from 192.168.220.1 port 3026 ssh2
+Jun 19 18:59:41 soc-server sshd[32216]: Failed password for root from 192.168.220.1 port 3026 ssh2
+Jun 19 18:59:49 soc-server sshd[32218]: Invalid user user from 192.168.220.1 port 7660
+Jun 19 18:59:53 soc-server sshd[32218]: Failed password for invalid user user from 192.168.220.1 port 7660 ssh2
+Jun 19 18:59:55 soc-server sshd[32218]: Failed password for invalid user user from 192.168.220.1 port 7660 ssh2
+Jun 19 18:59:59 soc-server sshd[32218]: Failed password for invalid user user from 192.168.220.1 port 7660 ssh2
+Jun 19 19:00:00 soc-server sshd[32218]: Connection reset by invalid user user 192.168.220.1 port 7660 [preauth]
+Jun 19 19:11:36 soc-server sudo:  adeyemi : TTY=pts/0 ; PWD=/home/adeyemi/Adeyemi_MOUNIROU_Hackaton_M1 ; USER=root ; COMMAND=/usr/bin/grep -i 'Failed password\\|Invalid user\\|brute force' /var/log/auth.log

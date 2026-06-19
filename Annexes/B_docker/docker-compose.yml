@@ -1,0 +1,66 @@
+version: "3.8"
+
+networks:
+  frontend_net:
+    driver: bridge
+  backend_net:
+    driver: bridge
+    internal: true
+
+volumes:
+  mariadb_data:
+  uptimekuma_data:
+  wazuh_data:
+
+services:
+  web:
+    image: nginx:latest
+    container_name: m1tech-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/html:/usr/share/nginx/html:ro
+      - ./nginx/logs:/var/log/nginx
+    networks:
+      - frontend_net
+
+  db:
+    image: mariadb:11
+    container_name: m1tech-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_DATABASE: m1tech_db
+      MARIADB_USER: m1tech_user
+      MARIADB_PASSWORD: ${MARIADB_USER_PASSWORD}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - backend_net
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: m1tech-uptimekuma
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - uptimekuma_data:/app/data
+    networks:
+      - frontend_net
+      - backend_net
+
+  wazuh:
+    image: wazuh/wazuh-manager:4.9.0
+    container_name: m1tech-wazuh-manager
+    restart: unless-stopped
+    ports:
+      - "1514:1514"
+      - "1515:1515"
+      - "55000:55000"
+    volumes:
+      - wazuh_data:/var/ossec/data
+    networks:
+      - backend_net
+      - frontend_net
